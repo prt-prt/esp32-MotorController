@@ -25,12 +25,21 @@ extern const int RESOLUTION; // 8-bit resolution (0-255)
 extern const int PWM_CHANNEL_A;
 extern const int PWM_CHANNEL_B;
 
-// Motor control functions
+// Basic motor control functions
 void setupMotors();
 void moveForward(int speed);
 void moveBackward(int speed);
 void turnLeft(int speed);
 void turnRight(int speed);
 void stopMotors();
+
+// Low-level motor control functions
+void setMotorA(int speed, bool forward);
+void setMotorB(int speed, bool forward);
+
+// Differential steering functions for organic movement
+void curveLeft(int leftSpeed, int rightSpeed);
+void curveRight(int leftSpeed, int rightSpeed);
+void moveDifferential(int leftSpeed, int rightSpeed);
 
 #endif // MOTOR_CONTROL_H 
