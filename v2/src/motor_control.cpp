@@ -1,15 +1,13 @@
 #include "motor_control.h"
 
-// L298N Motor Driver Pins for ESP32-CAM
+// DRV8833 Motor Driver Pins for ESP32-CAM
 // Motor A - Left Motor
-const int IN1 = 2;    // Direction control for Motor A
-const int IN2 = 12;   // Direction control for Motor A
-const int ENA = 14;   // PWM enable pin for Motor A
+const int AIN1 = 2;  // PWM control for Motor A direction 1
+const int AIN2 = 12; // PWM control for Motor A direction 2
 
 // Motor B - Right Motor
-const int IN3 = 15;   // Direction control for Motor B
-const int IN4 = 13;   // Direction control for Motor B
-const int ENB = 16;   // PWM enable pin for Motor B
+const int BIN1 = 15; // PWM control for Motor B direction 1
+const int BIN2 = 14; // PWM control for Motor B direction 2
 
 // Motor speed constants
 const int MAX_SPEED = 255;
@@ -17,30 +15,30 @@ const int MIN_SPEED = 0;
 const int DEFAULT_SPEED = 200;
 
 // PWM properties
-const int FREQ = 5000;       // PWM frequency
-const int RESOLUTION = 8;    // 8-bit resolution (0-255)
-const int PWM_CHANNEL_ENA = 0; // PWM channel for ENA
-const int PWM_CHANNEL_ENB = 1; // PWM channel for ENB
+const int FREQ = 5000;        // PWM frequency
+const int RESOLUTION = 8;     // 8-bit resolution (0-255)
+const int PWM_CHANNEL_AIN1 = 0; // PWM channel for AIN1
+const int PWM_CHANNEL_AIN2 = 1; // PWM channel for AIN2
+const int PWM_CHANNEL_BIN1 = 2; // PWM channel for BIN1
+const int PWM_CHANNEL_BIN2 = 3; // PWM channel for BIN2
 
 void setupMotors() {
-  // Configure PWM for enable pins
-  ledcSetup(PWM_CHANNEL_ENA, FREQ, RESOLUTION);
-  ledcSetup(PWM_CHANNEL_ENB, FREQ, RESOLUTION);
+  // Configure PWM for all motor control pins
+  ledcSetup(PWM_CHANNEL_AIN1, FREQ, RESOLUTION);
+  ledcSetup(PWM_CHANNEL_AIN2, FREQ, RESOLUTION);
+  ledcSetup(PWM_CHANNEL_BIN1, FREQ, RESOLUTION);
+  ledcSetup(PWM_CHANNEL_BIN2, FREQ, RESOLUTION);
   
-  // Attach the PWM channels to the enable pins
-  ledcAttachPin(ENA, PWM_CHANNEL_ENA);
-  ledcAttachPin(ENB, PWM_CHANNEL_ENB);
-  
-  // Initialize direction pins as outputs
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
-  pinMode(IN3, OUTPUT);
-  pinMode(IN4, OUTPUT);
+  // Attach the PWM channels to the pins
+  ledcAttachPin(AIN1, PWM_CHANNEL_AIN1);
+  ledcAttachPin(AIN2, PWM_CHANNEL_AIN2);
+  ledcAttachPin(BIN1, PWM_CHANNEL_BIN1);
+  ledcAttachPin(BIN2, PWM_CHANNEL_BIN2);
   
   // Initially stop the motors
   stopMotors();
   
-  Serial.println("Motor control initialized with L298N driver");
+  Serial.println("Motor control initialized with DRV8833 driver (v2)");
 }
 
 // Function to set motor A (left) speed and direction
@@ -49,17 +47,14 @@ void setMotorA(int speed, bool forward) {
   speed = constrain(speed, MIN_SPEED, MAX_SPEED);
   
   if (forward) {
-    // Forward: IN1 HIGH, IN2 LOW
-    digitalWrite(IN1, HIGH);
-    digitalWrite(IN2, LOW);
+    // Forward: PWM on AIN1, 0 on AIN2
+    ledcWrite(PWM_CHANNEL_AIN1, speed);
+    ledcWrite(PWM_CHANNEL_AIN2, 0);
   } else {
-    // Backward: IN1 LOW, IN2 HIGH
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, HIGH);
+    // Backward: 0 on AIN1, PWM on AIN2
+    ledcWrite(PWM_CHANNEL_AIN1, 0);
+    ledcWrite(PWM_CHANNEL_AIN2, speed);
   }
-  
-  // Set the motor speed with PWM on the enable pin
-  ledcWrite(PWM_CHANNEL_ENA, speed);
 }
 
 // Function to set motor B (right) speed and direction
@@ -68,17 +63,14 @@ void setMotorB(int speed, bool forward) {
   speed = constrain(speed, MIN_SPEED, MAX_SPEED);
   
   if (forward) {
-    // Forward: IN3 HIGH, IN4 LOW
-    digitalWrite(IN3, HIGH);
-    digitalWrite(IN4, LOW);
+    // Forward: PWM on BIN1, 0 on BIN2
+    ledcWrite(PWM_CHANNEL_BIN1, speed);
+    ledcWrite(PWM_CHANNEL_BIN2, 0);
   } else {
-    // Backward: IN3 LOW, IN4 HIGH
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
+    // Backward: 0 on BIN1, PWM on BIN2
+    ledcWrite(PWM_CHANNEL_BIN1, 0);
+    ledcWrite(PWM_CHANNEL_BIN2, speed);
   }
-  
-  // Set the motor speed with PWM on the enable pin
-  ledcWrite(PWM_CHANNEL_ENB, speed);
 }
 
 // Function to move the robot forward
@@ -111,15 +103,12 @@ void turnRight(int speed) {
 
 // Function to stop the motors
 void stopMotors() {
-  // Stop by setting both direction pins to the same level (LOW)
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, LOW);
-  
-  // Stop PWM signal to the enable pins
-  ledcWrite(PWM_CHANNEL_ENA, 0);
-  ledcWrite(PWM_CHANNEL_ENB, 0);
+  // Using brake mode (both pins LOW for coast or both HIGH for brake)
+  // We'll use coast mode (both LOW) for smoother stops
+  ledcWrite(PWM_CHANNEL_AIN1, 0);
+  ledcWrite(PWM_CHANNEL_AIN2, 0);
+  ledcWrite(PWM_CHANNEL_BIN1, 0);
+  ledcWrite(PWM_CHANNEL_BIN2, 0);
 }
 
 // NEW FUNCTIONS FOR DIFFERENTIAL STEERING

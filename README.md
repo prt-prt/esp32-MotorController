@@ -2,101 +2,48 @@
 
 This project implements control software for a 2-wheel drive robot car using an ESP32 microcontroller with PWM speed control for the motors, enabling various movement modes.
 
+## Project Structure
+
+This project is organized into two versions:
+- **v1**: Uses the L298N motor driver (older, traditional driver)
+- **v2**: Uses the DRV8833 motor driver (more efficient, modern driver)
+
+Each version contains its own complete implementation for its respective motor driver. For detailed wiring and implementation specifics, see the WIRING.md file in each subproject folder.
+
 ## Hardware Requirements
 
+### Common Components for Both Versions
 - ESP32-CAM development board
 - 2-wheel drive robot car chassis with DC motors
-- DRV8833 dual H-bridge motor driver
 - MP1584EN buck converter module (for power regulation)
 - Power supply for motors (battery pack/power bank)
 - Jumper wires
 - Small breadboard (optional, for cleaner wiring)
 
-## Pin Connections
+### Version Specific Components
+- **v1**: L298N dual H-bridge motor driver ([detailed documentation](v1/WIRING.md))
+- **v2**: DRV8833 dual H-bridge motor driver ([detailed documentation](v2/WIRING.md))
 
-The project uses the following pin connections between the ESP32-CAM and the DRV8833 motor driver:
+## Motor Driver Comparison
 
-### Motor Control Pins
-- **AIN1**: GPIO2 - PWM control for left motor direction 1
-- **AIN2**: GPIO12 - PWM control for left motor direction 2
-- **BIN1**: GPIO15 - PWM control for right motor direction 1
-- **BIN2**: GPIO14 - PWM control for right motor direction 2
+### L298N (v1)
+- Traditional motor driver
+- Uses separate enable pins for PWM speed control and input pins for direction
+- Lower efficiency (~70%)
+- Higher heat generation
+- Requires 6 pins total for control
 
-## Comprehensive Wiring Guide
+### DRV8833 (v2)
+- Modern motor driver
+- Uses 4 PWM control pins that handle both speed and direction
+- Higher efficiency (>90%)
+- Lower heat generation
+- Better battery life
+- Smaller physical size
 
-### Power Circuit
-
-1. **Battery/Power Bank** → **MP1584EN Buck Converter**
-   - Connect the positive terminal of your power source to VIN+ on the MP1584EN
-   - Connect the negative terminal of your power source to VIN- on the MP1584EN
-
-2. **MP1584EN Buck Converter** → **ESP32-CAM**
-   - Set the MP1584EN output to 5V using its adjustment potentiometer
-   - Connect VOUT+ from the MP1584EN to 5V on the ESP32-CAM
-   - Connect VOUT- from the MP1584EN to GND on the ESP32-CAM
-
-3. **Battery/Power Bank** → **DRV8833 VCC**
-   - Connect the positive terminal directly to VM (motor power) on the DRV8833
-   - Connect the negative terminal to GND on the DRV8833
-
-4. **Common Ground**
-   - Connect GND from the MP1584EN, DRV8833, and ESP32-CAM together
-
-### Motor Connections
-
-1. **DRV8833** → **Motors**
-   - Connect Motor A (Left):
-     - AOUT1 → Left motor terminal 1
-     - AOUT2 → Left motor terminal 2
-   - Connect Motor B (Right):
-     - BOUT1 → Right motor terminal 1
-     - BOUT2 → Right motor terminal 2
-
-2. **ESP32-CAM** → **DRV8833 Control Pins**
-   - GPIO2 → AIN1
-   - GPIO12 → AIN2
-   - GPIO15 → BIN1
-   - GPIO14 → BIN2
-
-### Wiring Diagram
-
-```
-Power Bank/Battery
-│
-├── + ──┬─── VM (DRV8833 Motor Power)
-│       │
-│       └─── VIN+ (MP1584EN Input)
-│
-└── - ──┬─── GND (DRV8833)
-        │
-        └─── VIN- (MP1584EN Input)
-
-MP1584EN Buck Converter
-│
-├── VOUT+ ─── 5V (ESP32-CAM)
-│
-└── VOUT- ─── GND (ESP32-CAM)
-
-ESP32-CAM                DRV8833
-│                        │
-├── GPIO2 ───────────── AIN1
-│                        │
-├── GPIO12 ──────────── AIN2
-│                        │
-├── GPIO15 ──────────── BIN1
-│                        │
-├── GPIO14 ──────────── BIN2
-│                        │
-└── GND ─────────────── GND
-                         │
-                         ├── AOUT1 ─── Left Motor Terminal 1
-                         │
-                         ├── AOUT2 ─── Left Motor Terminal 2
-                         │
-                         ├── BOUT1 ─── Right Motor Terminal 1
-                         │
-                         └── BOUT2 ─── Right Motor Terminal 2
-```
+For detailed pin connections, wiring diagrams, and implementation specifics, see:
+- [L298N Wiring & Implementation Guide](v1/WIRING.md)
+- [DRV8833 Wiring & Implementation Guide](v2/WIRING.md)
 
 ## Software Setup
 
@@ -105,7 +52,7 @@ This project uses PlatformIO for development and deployment:
 1. Install [Visual Studio Code](https://code.visualstudio.com/)
 2. Install the [PlatformIO extension](https://platformio.org/install/ide?install=vscode)
 3. Clone or download this repository
-4. Open the project folder in VS Code
+4. Open either the v1 or v2 project folder in VS Code
 5. Build and upload the project using PlatformIO
 
 ## Features
@@ -142,24 +89,6 @@ Advanced movement control is achieved through differential steering:
 
 All movement functions support variable speed control through PWM, with speed values ranging from 0 (stop) to 255 (full speed).
 
-## DRV8833 Motor Control
-
-The DRV8833 motor driver operates differently from traditional drivers:
-
-- Uses 4 PWM control pins instead of separate direction and enable pins
-- Controls both direction and speed with the same pins
-- For each motor:
-  - Forward: PWM on AIN1/BIN1, 0V on AIN2/BIN2
-  - Reverse: 0V on AIN1/BIN1, PWM on AIN2/BIN2  
-  - Coast (free rotation): 0V on both inputs
-  - Brake: High signal on both inputs
-
-Benefits of using the DRV8833:
-- Higher efficiency (>90% vs ~70% with L298N)
-- Lower heat generation
-- Better battery life
-- Smaller size
-
 ## Movement Modes in Detail
 
 ### Test Mode
@@ -192,23 +121,15 @@ To implement additional movement modes or alter the existing ones, refer to the 
 
 ## Troubleshooting
 
-### Power Issues
-- If the ESP32 doesn't power on, check that the MP1584EN is properly set to 5V output
-- Verify all ground connections are properly connected
-- Ensure your power source has sufficient capacity for both the ESP32 and motors
-
-### Motor Issues
-- If motors don't respond, check all control pin connections
-- If motors run in the wrong direction, swap the motor's terminal connections
-- Low motor power could indicate insufficient battery voltage
-
-### Debugging
-- Serial monitoring (115200 baud rate) will provide debugging information
-- The ESP32-CAM's onboard LED can be used for status indications
+Basic troubleshooting tips are included in the WIRING.md file for each version:
+- [L298N Troubleshooting](v1/WIRING.md#troubleshooting)
+- [DRV8833 Troubleshooting](v2/WIRING.md#troubleshooting)
 
 ## Project Structure
 
+For each version (v1 and v2):
 - `platformio.ini`: PlatformIO configuration
+- `WIRING.md`: Detailed wiring and implementation documentation
 - `include/motor_control.h`: Header file for motor control functions
 - `include/movement_modes.h`: Defines the movement modes enum
 - `include/test_mode.h`: Header for test mode
