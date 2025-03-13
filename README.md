@@ -1,62 +1,70 @@
 # ESP32 Robot Car Controller
 
-This project implements control software for a 2-wheel drive robot car using an ESP32 microcontroller with PWM speed control for the motors, enabling various movement modes.
+This project implements control software for a 2-wheel drive robot car using ESP32 microcontrollers with PWM speed control for the motors, enabling various movement modes.
 
 ## Project Structure
 
 This project is organized into two versions:
-- **v1**: Uses the L298N motor driver (older, traditional driver)
-- **v2**: Uses the DRV8833 motor driver (more efficient, modern driver)
+- **v1**: Uses the ESP32-CAM and L298N motor driver (older, traditional driver)
+- **v2**: Uses the ESP32-S2 Mini and DRV8833 motor driver (more efficient, modern setup)
 
-Each version contains its own complete implementation for its respective motor driver. For detailed wiring and implementation specifics, see the WIRING.md file in each subproject folder.
+Each version contains its own complete implementation for its respective hardware. For detailed wiring and implementation specifics, see the WIRING.md file in each subproject folder.
 
 ## Hardware Requirements
 
 ### Common Components for Both Versions
-- ESP32-CAM development board
 - 2-wheel drive robot car chassis with DC motors
 - Jumper wires
 - Small breadboard (optional, for cleaner wiring)
 
 ### Version Specific Components
 - **v1**: 
+  - ESP32-CAM development board
   - L298N dual H-bridge motor driver ([detailed documentation](v1/WIRING.md))
   - MP1584EN buck converter module (for power regulation)
   - Power supply for motors (battery pack/power bank)
 
 - **v2**: 
+  - Wemos ESP32-S2 Mini development board
   - DRV8833 dual H-bridge motor driver ([detailed documentation](v2/WIRING.md))
-  - 5V powerbank (powers the ESP32 directly)
+  - 5V powerbank with USB output (powers ESP32-S2 Mini directly)
   - Step-up converter (boosts 5V from powerbank to 6V for motors)
+  - SPST toggle switch (for global power control)
 
 ### Power Supply Architecture Differences
 
 The v1 and v2 versions use different power supply approaches:
 
 **v1 Power Supply:**
-- Battery/power source → MP1584EN buck converter → ESP32 (5V)
+- Battery/power source → MP1584EN buck converter → ESP32-CAM (5V)
 - Battery/power source → L298N motor driver (higher voltage)
 
 **v2 Power Supply:**
-- Powerbank (5V) → ESP32 (direct connection)
-- Powerbank (5V) → Step-up converter → DRV8833 motor driver (6V)
+- Powerbank USB output → ESP32-S2 Mini USB-C port (direct connection)
+- Powerbank 5V output → Toggle switch → Step-up converter → DRV8833 motor driver (6V)
 
-## Motor Driver Comparison
+The v2 setup includes a master power switch that allows you to disable the motors while keeping the microcontroller powered for programming and debugging.
 
-### L298N (v1)
-- Traditional motor driver
-- Uses separate enable pins for PWM speed control and input pins for direction
-- Lower efficiency (~70%)
-- Higher heat generation
-- Requires 6 pins total for control
+## Hardware Comparison
 
-### DRV8833 (v2)
-- Modern motor driver
-- Uses 4 PWM control pins that handle both speed and direction
-- Higher efficiency (>90%)
-- Lower heat generation
-- Better battery life
-- Smaller physical size
+### Microcontroller Comparison
+| Feature | v1: ESP32-CAM | v2: ESP32-S2 Mini |
+|---------|--------------|-------------------|
+| USB Connection | External programmer required | Built-in USB-C port |
+| Size | Larger | Compact |
+| Power Input | 5V via pins | Direct USB-C |
+| Programming | Via serial adapter | Native USB |
+| Unnecessary Features | Camera module | None |
+| Form Factor | Less robot-friendly | Ideal for robotics |
+
+### Motor Driver Comparison
+| Feature | v1: L298N | v2: DRV8833 |
+|---------|----------|-------------|
+| Efficiency | ~70% | >90% |
+| Control Pins | 6 total | 4 total |
+| Heat Generation | High | Low |
+| Size | Large | Compact |
+| Control Method | Enable + Direction pins | PWM on all pins |
 
 For detailed pin connections, wiring diagrams, and implementation specifics, see:
 - [L298N Wiring & Implementation Guide](v1/WIRING.md)
@@ -71,6 +79,9 @@ This project uses PlatformIO for development and deployment:
 3. Clone or download this repository
 4. Open either the v1 or v2 project folder in VS Code
 5. Build and upload the project using PlatformIO
+
+### V2 Programming Advantage
+The v2 version with ESP32-S2 Mini can be programmed directly via USB-C connection without additional hardware, making development and testing significantly easier.
 
 ## Features
 
@@ -132,7 +143,7 @@ Performs a slow, controlled rotation around the robot's center:
 
 ## Customization
 
-You can customize the pin assignments at the beginning of the `motor_control.cpp` file if you need to use different GPIO pins on your ESP32.
+You can customize the pin assignments at the beginning of the `motor_control.cpp` file if you need to use different GPIO pins on your microcontroller.
 
 To implement additional movement modes or alter the existing ones, refer to the corresponding mode files in the `src` directory.
 
