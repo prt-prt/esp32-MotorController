@@ -15,14 +15,31 @@ Each version contains its own complete implementation for its respective motor d
 ### Common Components for Both Versions
 - ESP32-CAM development board
 - 2-wheel drive robot car chassis with DC motors
-- MP1584EN buck converter module (for power regulation)
-- Power supply for motors (battery pack/power bank)
 - Jumper wires
 - Small breadboard (optional, for cleaner wiring)
 
 ### Version Specific Components
-- **v1**: L298N dual H-bridge motor driver ([detailed documentation](v1/WIRING.md))
-- **v2**: DRV8833 dual H-bridge motor driver ([detailed documentation](v2/WIRING.md))
+- **v1**: 
+  - L298N dual H-bridge motor driver ([detailed documentation](v1/WIRING.md))
+  - MP1584EN buck converter module (for power regulation)
+  - Power supply for motors (battery pack/power bank)
+
+- **v2**: 
+  - DRV8833 dual H-bridge motor driver ([detailed documentation](v2/WIRING.md))
+  - 5V powerbank (powers the ESP32 directly)
+  - Step-up converter (boosts 5V from powerbank to 6V for motors)
+
+### Power Supply Architecture Differences
+
+The v1 and v2 versions use different power supply approaches:
+
+**v1 Power Supply:**
+- Battery/power source → MP1584EN buck converter → ESP32 (5V)
+- Battery/power source → L298N motor driver (higher voltage)
+
+**v2 Power Supply:**
+- Powerbank (5V) → ESP32 (direct connection)
+- Powerbank (5V) → Step-up converter → DRV8833 motor driver (6V)
 
 ## Motor Driver Comparison
 

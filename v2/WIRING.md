@@ -31,28 +31,41 @@ The DRV8833 motor driver requires 4 pins to control two motors:
 ### Power Connections
 | Power Source | DRV8833 Pin | Function |
 |--------------|-------------|----------|
-| Battery +    | VM          | Motor power supply (2.7V-10.8V) |
-| Battery -    | GND         | Ground connection |
-| N/A          | VCC         | Logic supply voltage (leave disconnected if using VM for both) |
+| Step-up converter output (+6V) | VM | Motor power supply (6V recommended) |
+| GND | GND | Ground connection |
+| N/A | VCC | Logic supply voltage (leave disconnected if using VM for both) |
+
+## Power Supply Architecture
+
+This implementation uses a different power supply approach:
+
+1. **Powerbank (5V)** serves as the main power source for:
+   - Directly powering the ESP32-CAM (which operates at 5V)
+   - Input to a step-up converter
+
+2. **Step-up Converter** boosts the 5V from the powerbank to 6V for:
+   - Powering the motors through the DRV8833 driver (VM pin)
+
+This architecture optimizes battery life while ensuring the motors receive adequate voltage.
 
 ## Detailed Wiring Diagram
 
 ```
-Power Bank/Battery
+Powerbank (5V output)
 │
-├── + ──┬─── VM (DRV8833 Motor Power)
+├── + ──┬─── 5V (ESP32-CAM)
 │       │
-│       └─── VIN+ (MP1584EN Input)
+│       └─── VIN+ (Step-up Converter Input)
 │
-└── - ──┬─── GND (DRV8833)
+└── - ──┬─── GND (ESP32-CAM)
         │
-        └─── VIN- (MP1584EN Input)
+        └─── GND (Step-up Converter)
 
-MP1584EN Buck Converter (For ESP32 power)
+Step-up Converter
 │
-├── VOUT+ ─── 5V (ESP32-CAM)
+├── VOUT+ (6V) ─── VM (DRV8833 Motor Power)
 │
-└── VOUT- ─── GND (ESP32-CAM)
+└── VOUT- ─────── GND (DRV8833)
 
 ESP32-CAM                DRV8833
 │                        │
@@ -74,6 +87,24 @@ ESP32-CAM                DRV8833
                          │
                          └── BOUT2 ─── Right Motor Terminal 2
 ```
+
+## Power Supply Considerations
+
+### 5V Powerbank
+- Provides a stable 5V output for the ESP32-CAM
+- Typically has built-in protection circuits
+- Ensures clean power for the microcontroller
+- Many powerbanks can provide 2A or more, which is sufficient for both the ESP32 and the step-up converter
+
+### Step-up Converter for Motors
+- Converts 5V to 6V for optimal motor performance 
+- The DRV8833 works well with 6V for small DC motors
+- Higher voltage provides better torque and speed
+- Efficiency is typically around 85-90%
+
+### Common Ground
+- All grounds must be connected together (powerbank, ESP32, step-up converter, and DRV8833)
+- This ensures proper signal transmission and prevents floating reference issues
 
 ## DRV8833 Control Logic
 
@@ -210,6 +241,7 @@ The DRV8833 provides up to 1.5A continuous current per channel (2A peak), which 
 - Verify power connections (VM and GND)
 - Ensure PWM signals are being generated
 - Confirm motor connections to AOUT and BOUT pins
+- Check the output voltage of your step-up converter (should be 6V)
 
 ### Motors Running In Wrong Direction
 - Swap the motor terminal connections (AOUT1/AOUT2 or BOUT1/BOUT2)
@@ -219,8 +251,10 @@ The DRV8833 provides up to 1.5A continuous current per channel (2A peak), which 
 - Check for motor stalls or excessive load
 - Verify motors are within current rating
 - Add additional cooling if necessary (rare with DRV8833)
+- Ensure the step-up converter can handle the current requirements
 
 ### Unexpected Behavior
-- Check for proper grounding between ESP32 and DRV8833
+- Check for proper grounding between all components
 - Verify PWM configuration is correct
-- Check for any damaged connections 
+- Check for any damaged connections
+- Monitor the powerbank's charge level - performance may degrade as it depletes 
