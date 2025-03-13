@@ -5,7 +5,7 @@ This document provides detailed information about the DRV8833 motor driver imple
 ## Hardware Components
 
 - **Wemos ESP32-S2 Mini** microcontroller
-- **DRV8833** dual H-bridge motor driver
+- **DRV8833** dual H-bridge motor driver breakout board
 - **Step-up converter** (5V to 6V)
 - **SPST toggle switch** (for global power control)
 - **Powerbank** with USB output
@@ -39,15 +39,33 @@ The DRV8833 is a modern dual H-bridge motor driver that can control two DC motor
 - Small physical footprint
 - Built-in protection features (overcurrent, overtemperature, undervoltage)
 
+## DRV8833 Board Pinout
+
+This implementation uses a DRV8833 breakout board with the following pinout:
+
+| Pin Label | Function |
+|-----------|----------|
+| VCC       | Power input for both motors and logic (connect 6V from step-up converter) |
+| GND       | Ground connection |
+| IN1       | Input control for motor A direction 1 |
+| IN2       | Input control for motor A direction 2 |
+| IN3       | Input control for motor B direction 1 |
+| IN4       | Input control for motor B direction 2 |
+| OUT1      | Output to motor A terminal 1 |
+| OUT2      | Output to motor A terminal 2 |
+| OUT3      | Output to motor B terminal 1 |
+| OUT4      | Output to motor B terminal 2 |
+| SLEEP     | Sleep mode control (tie to VCC for always-on or connect to GPIO for software control) |
+
 ## Pin Configuration
 
 ### Control Pins
 | ESP32-S2 Mini GPIO | DRV8833 Pin | Function |
 |--------------------|-------------|----------|
-| GPIO7              | AIN1        | PWM control for left motor direction 1 |
-| GPIO8              | AIN2        | PWM control for left motor direction 2 |
-| GPIO9              | BIN1        | PWM control for right motor direction 1 |
-| GPIO10             | BIN2        | PWM control for right motor direction 2 |
+| GPIO7              | IN1         | PWM control for left motor direction 1 |
+| GPIO8              | IN2         | PWM control for left motor direction 2 |
+| GPIO9              | IN3         | PWM control for right motor direction 1 |
+| GPIO10             | IN4         | PWM control for right motor direction 2 |
 
 *Note: The exact GPIO numbers should be adjusted based on your specific board layout and requirements.*
 
@@ -58,7 +76,8 @@ The DRV8833 is a modern dual H-bridge motor driver that can control two DC motor
 | Toggle switch output | USB splitter | Distributes power to both systems |
 | USB splitter - first output | ESP32-S2 Mini USB-C | Power for microcontroller |
 | USB splitter - second output | 5V to Step-up converter | Input for motor power circuit |
-| Step-up converter output (6V) | DRV8833 VM | Motor power supply (6V recommended) |
+| Step-up converter output (6V) | DRV8833 VCC | Power supply for motor driver (6V recommended) |
+| ESP32-S2 Mini GPIO (optional) | DRV8833 SLEEP pin | Software control of driver power state |
 | GND connections | Common ground | All grounds must be connected together |
 
 ## Power Supply Architecture
@@ -81,7 +100,7 @@ This implementation uses a true global power control approach:
 
 4. **Step-up Converter**:
    - Boosts the 5V from the USB power to 6V
-   - Powers the motors through the DRV8833 driver (VM pin)
+   - Powers the DRV8833 motor driver through its VCC pin
 
 This architecture provides simplified control with a single switch while maintaining clean, separate power paths for the sensitive microcontroller and the more demanding motors.
 
@@ -102,27 +121,27 @@ Powerbank
                                                          │
                                                          │ (6V output)
                                                          │
-                                                         └─── VM (DRV8833)
+                                                         └─── VCC (DRV8833)
 
 ESP32-S2 Mini            DRV8833
 │                        │
-├── GPIO7 ────────────── AIN1
+├── GPIO7 ────────────── IN1
 │                        │
-├── GPIO8 ────────────── AIN2
+├── GPIO8 ────────────── IN2
 │                        │
-├── GPIO9 ────────────── BIN1
+├── GPIO9 ────────────── IN3
 │                        │
-├── GPIO10 ───────────── BIN2
+├── GPIO10 ───────────── IN4
 │                        │
 └── GND ─────────────────┼─── GND
                          │
-                         ├─── AOUT1 ─── Left Motor Terminal 1
+                         ├─── OUT1 ─── Left Motor Terminal 1
                          │
-                         ├─── AOUT2 ─── Left Motor Terminal 2
+                         ├─── OUT2 ─── Left Motor Terminal 2
                          │
-                         ├─── BOUT1 ─── Right Motor Terminal 1
+                         ├─── OUT3 ─── Right Motor Terminal 1
                          │
-                         └─── BOUT2 ─── Right Motor Terminal 2
+                         └─── OUT4 ─── Right Motor Terminal 2
 
 All GND connections must be common between:
 - ESP32-S2 Mini
@@ -187,11 +206,11 @@ There are two recommended approaches for implementing the global power switch:
 
 The DRV8833 uses a more streamlined approach to motor control compared to traditional drivers:
 
-1. **Both Direction and Speed Control**: Each motor requires two PWM pins (AIN1/AIN2 for left motor, BIN1/BIN2 for right motor)
+1. **Both Direction and Speed Control**: Each motor requires two PWM pins (IN1/IN2 for left motor, IN3/IN4 for right motor)
 2. **No Separate Enable Pins**: Direction and speed are controlled by the PWM duty cycle on the input pins
 
 ### Motor Control Logic
-| Motor Function | AIN1/BIN1 | AIN2/BIN2 | Result |
+| Motor Function | IN1/IN3 | IN2/IN4 | Result |
 |----------------|-----------|-----------|--------|
 | Forward        | PWM       | 0         | Motor rotates forward at speed proportional to PWM |
 | Backward       | 0         | PWM       | Motor rotates backward at speed proportional to PWM |
@@ -201,11 +220,65 @@ The DRV8833 uses a more streamlined approach to motor control compared to tradit
 ### Robot Movement Control
 | Robot Movement | Left Motor      | Right Motor     |
 |----------------|-----------------|-----------------|
-| Forward        | AIN1=PWM, AIN2=0 | BIN1=PWM, BIN2=0 |
-| Backward       | AIN1=0, AIN2=PWM | BIN1=0, BIN2=PWM |
-| Turn Left      | AIN1=0, AIN2=PWM | BIN1=PWM, BIN2=0 |
-| Turn Right     | AIN1=PWM, AIN2=0 | BIN1=0, BIN2=PWM |
-| Stop           | AIN1=0, AIN2=0   | BIN1=0, BIN2=0   |
+| Forward        | IN1=PWM, IN2=0 | IN3=PWM, IN4=0 |
+| Backward       | IN1=0, IN2=PWM | IN3=0, IN4=PWM |
+| Turn Left      | IN1=0, IN2=PWM | IN3=PWM, IN4=0 |
+| Turn Right     | IN1=PWM, IN2=0 | IN3=0, IN4=PWM |
+| Stop           | IN1=0, IN2=0   | IN3=0, IN4=0   |
+
+## Power Management Using SLEEP Pin
+
+The DRV8833 motor driver features a SLEEP pin that can be used for advanced power management. There are two ways to control this pin:
+
+### Option 1: Always-On Configuration (Fixed Wiring)
+- Connect the SLEEP pin directly to the VCC pin or to 3.3V from the ESP32
+- The motor driver will always be enabled when power is supplied
+- Simplest configuration but doesn't allow for software-controlled power saving
+
+### Option 2: Software Control for Power Saving (Recommended)
+- Connect the SLEEP pin to an available GPIO pin on the ESP32-S2 Mini
+- Use software control to enable/disable the motor driver when needed
+- Significantly reduces power consumption when motors are idle
+
+#### Implementation for Software Control:
+
+1. **Hardware Connection**:
+   - Connect the SLEEP pin from the DRV8833 to an available GPIO pin (e.g., GPIO5)
+   - Make sure your ground connections are solid
+
+2. **Software Implementation**:
+   ```cpp
+   const int SLEEP_PIN = 5; // Choose any available GPIO pin
+   
+   void setup() {
+     pinMode(SLEEP_PIN, OUTPUT);
+     digitalWrite(SLEEP_PIN, HIGH); // Initially enable the driver
+   }
+   
+   // Function to put the motor driver to sleep (low power mode)
+   void disableMotorDriver() {
+     digitalWrite(SLEEP_PIN, LOW); // Driver enters sleep mode
+   }
+   
+   // Function to wake up the motor driver
+   void enableMotorDriver() {
+     digitalWrite(SLEEP_PIN, HIGH); // Driver is active
+     delay(1); // Small delay for wake-up time
+   }
+   ```
+
+3. **Power Saving Strategy**:
+   - Enable the driver only when motors need to be used
+   - Disable the driver during extended idle periods
+   - Can be triggered by inactivity timers or low battery conditions
+
+4. **Important Notes**:
+   - When in sleep mode (SLEEP pin LOW), the motor outputs are disabled regardless of IN1-IN4 states
+   - The driver will respond to the current IN1-IN4 pin states immediately when woken up
+   - The sleep mode reduces power consumption to microamps, significantly extending battery life
+   - Always enable the driver before attempting to control the motors
+
+This software-controlled approach provides the best balance between functionality and power efficiency, making it ideal for battery-powered robot applications.
 
 ## Assembly Instructions
 
@@ -232,23 +305,23 @@ The DRV8833 uses a more streamlined approach to motor control compared to tradit
    - Connect the power switch output to the USB splitter
    - Connect one output from the splitter to the ESP32-S2 Mini's USB-C port
    - Extract 5V/GND from the second output and connect to the step-up converter input
-   - Connect the step-up converter's 6V output to VM on the DRV8833
+   - Connect the step-up converter's 6V output to VCC on the DRV8833
    - Connect all ground lines together (powerbank, ESP32-S2 Mini, step-up converter, DRV8833)
 
 5. **Connect the control circuit**:
-   - Connect GPIO7 on ESP32-S2 Mini to AIN1 on DRV8833
-   - Connect GPIO8 on ESP32-S2 Mini to AIN2 on DRV8833
-   - Connect GPIO9 on ESP32-S2 Mini to BIN1 on DRV8833
-   - Connect GPIO10 on ESP32-S2 Mini to BIN2 on DRV8833
+   - Connect GPIO7 on ESP32-S2 Mini to IN1 on DRV8833
+   - Connect GPIO8 on ESP32-S2 Mini to IN2 on DRV8833
+   - Connect GPIO9 on ESP32-S2 Mini to IN3 on DRV8833
+   - Connect GPIO10 on ESP32-S2 Mini to IN4 on DRV8833
 
 6. **Connect the motors**:
-   - Connect left motor to AOUT1 and AOUT2 on DRV8833
-   - Connect right motor to BOUT1 and BOUT2 on DRV8833
+   - Connect left motor to OUT1 and OUT2 on DRV8833
+   - Connect right motor to OUT3 and OUT4 on DRV8833
 
 7. **Test the circuit**:
    - Power on the circuit using the global power switch
    - Verify that the ESP32-S2 Mini powers up correctly
-   - Check voltage levels at the DRV8833 VM pin (should be approximately 6V)
+   - Check voltage levels at the DRV8833 VCC pin (should be approximately 6V)
 
 ## Advantages of This Setup
 
@@ -287,13 +360,13 @@ The DRV8833 uses a more streamlined approach to motor control compared to tradit
 - Verify the powerbank has sufficient charge
 
 ### Motors Not Responding
-- Verify power connections (VM and GND on DRV8833)
+- Verify power connections (VCC and GND on DRV8833)
 - Ensure the step-up converter is outputting approximately 6V
-- Confirm motor connections to AOUT and BOUT pins
+- Confirm motor connections to OUT and GND pins
 - Verify control pin connections between ESP32-S2 Mini and DRV8833
 
 ### Motors Running In Wrong Direction
-- Swap the motor terminal connections (AOUT1/AOUT2 or BOUT1/BOUT2)
+- Swap the motor terminal connections (OUT1/OUT2 or OUT3/OUT4)
 - Or modify the control logic in the code to invert the direction
 
 ### Inconsistent Motor Behavior
