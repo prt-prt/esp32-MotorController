@@ -9,6 +9,7 @@ This document provides detailed information about the DRV8833 motor driver imple
 - **Step-up converter** (5V to 6V)
 - **SPST toggle switch** (for global power control)
 - **Powerbank** with USB output
+- **USB splitter cable or adapter** (to split USB power after the switch)
 - **DC motors** (2x)
 - **Jumper wires and connectors**
 
@@ -53,43 +54,55 @@ The DRV8833 is a modern dual H-bridge motor driver that can control two DC motor
 ### Power Connections
 | Power Source | Connected To | Function |
 |--------------|-------------|----------|
-| Powerbank USB output | ESP32-S2 Mini USB-C | Power for microcontroller |
-| Powerbank 5V output | Toggle switch | Main power input with on/off control |
-| Toggle switch | Step-up converter input | Controls power to motor driver circuit |
+| Powerbank USB output | Global toggle switch | Main power input for entire system |
+| Toggle switch output | USB splitter | Distributes power to both systems |
+| USB splitter - first output | ESP32-S2 Mini USB-C | Power for microcontroller |
+| USB splitter - second output | 5V to Step-up converter | Input for motor power circuit |
 | Step-up converter output (6V) | DRV8833 VM | Motor power supply (6V recommended) |
 | GND connections | Common ground | All grounds must be connected together |
 
 ## Power Supply Architecture
 
-This implementation uses a simplified power supply approach:
+This implementation uses a true global power control approach:
 
-1. **Powerbank** serves as the main power source with dual outputs:
-   - USB output directly to ESP32-S2 Mini USB-C port (powers the microcontroller)
-   - 5V output through a toggle switch to the step-up converter
+1. **Powerbank** serves as the single power source:
+   - USB output goes to the global toggle switch
 
 2. **Global Power Switch**:
-   - SPST toggle switch placed between the powerbank and step-up converter
-   - Provides a master on/off control for the entire motor system
-   - ESP32-S2 Mini can remain powered via USB for programming while motors are disabled
+   - SPST toggle switch placed between the powerbank and all power consumers
+   - Provides master on/off control for the entire system
+   - When off, both the ESP32-S2 Mini and motors are powered down
+   - When on, power flows to both the ESP32-S2 Mini and the step-up converter
 
-3. **Step-up Converter**:
-   - Boosts the 5V from the powerbank to 6V
+3. **USB Power Distribution**:
+   - After the switch, a USB splitter/adapter divides power to:
+     1. ESP32-S2 Mini via USB-C connector (for both power and programming)
+     2. Step-up converter input (via USB power extraction)
+
+4. **Step-up Converter**:
+   - Boosts the 5V from the USB power to 6V
    - Powers the motors through the DRV8833 driver (VM pin)
 
-This architecture optimizes power usage, simplifies wiring, and provides convenient control.
+This architecture provides simplified control with a single switch while maintaining clean, separate power paths for the sensitive microcontroller and the more demanding motors.
 
 ## Detailed Wiring Diagram
 
 ```
 Powerbank
 │
-├── USB output ─────────── USB-C port on ESP32-S2 Mini
-│
-└── 5V output ──── Toggle Switch ──── Step-up Converter Input
-                                      │
-                                      │ (+6V output)
-                                      │
-                                      └─── VM (DRV8833 Motor Power)
+└── USB output ──── Global Toggle Switch ──── USB Splitter/Hub
+                                               │
+                                               ├─── USB-C to ESP32-S2 Mini
+                                               │
+                                               └─── USB power extraction
+                                                    │
+                                                    │ (5V + GND)
+                                                    │
+                                                    └─── Step-up Converter
+                                                         │
+                                                         │ (6V output)
+                                                         │
+                                                         └─── VM (DRV8833)
 
 ESP32-S2 Mini            DRV8833
 │                        │
@@ -118,19 +131,40 @@ All GND connections must be common between:
 - Powerbank negative output
 ```
 
+## Implementing the Global Power Switch
+
+There are two recommended approaches for implementing the global power switch:
+
+### Option 1: USB Power Switch (Preferred)
+- Use a dedicated USB power switch that handles all 4 USB lines
+- This allows for data connectivity when needed
+- Examples: USB in-line switch or USB power switch module
+
+### Option 2: DIY Approach
+- Use a SPST toggle switch placed in the USB power line (VBUS/red wire only)
+- Cut only the red wire in a USB cable and connect the toggle switch
+- Ensure the switch is rated for at least 2-3A
+- Leave the data lines (D+/D-) and ground wire intact
+
 ## Power Supply Considerations
 
 ### Powerbank Selection
 - Choose a powerbank with at least 2A output capability 
-- Must have both USB and direct 5V output options
-- USB output powers the ESP32-S2 Mini directly
-- 5V output (through switch) powers the motor circuit
+- Standard USB output will be split between ESP32-S2 Mini and the motor circuit
+- For longer run time, select a powerbank with higher capacity (10,000mAh+)
+- Some powerbanks may turn off automatically with low current draw, so test before final implementation
 
 ### Global Power Switch
-- SPST (Single Pole, Single Throw) toggle switch
-- Should be rated for at least 2A
+- SPST (Single Pole, Single Throw) toggle switch for DIY approach
+- USB power switch for cleaner implementation 
+- Should be rated for at least 2-3A
 - Position the switch in an easily accessible location on the robot
-- This allows you to quickly power down the motors without disconnecting the powerbank
+- Provides convenient on/off control for the entire system
+
+### USB Splitter/Power Distribution
+- Use a high-quality USB splitter or hub that can handle 2A+ total current
+- For DIY approach, you can extract 5V/GND from a USB breakout board or adapter
+- Ensure all power connections use adequately sized wires
 
 ### Step-up Converter for Motors
 - Converts 5V to 6V for optimal motor performance
@@ -140,10 +174,9 @@ All GND connections must be common between:
 - Must be able to handle the peak current of both motors running simultaneously
 
 ### ESP32-S2 Mini Power
-- Powered directly via USB-C port
+- Powered directly via USB-C port from the USB splitter
 - Has built-in power regulation
-- Can remain powered on while motors are disabled via the global switch
-- Simplifies development and debugging process
+- The power switch controls both ESP32-S2 Mini and motors for true global control
 
 ### Common Ground Connection
 - All ground connections must be tied together
@@ -180,52 +213,59 @@ The DRV8833 uses a more streamlined approach to motor control compared to tradit
    - ESP32-S2 Mini
    - DRV8833 driver board
    - Step-up converter
-   - Toggle switch
+   - Toggle switch or USB power switch
+   - USB splitter/adapter
    - Powerbank
    - Jumper wires
 
-2. **Mount the components**:
+2. **Prepare the power switch**:
+   - Option 1: Install the USB power switch in-line with the USB cable from the powerbank
+   - Option 2: Cut the red wire in a USB cable and connect the toggle switch
+
+3. **Mount the components**:
    - Secure all components to the robot chassis
-   - Position the toggle switch in an accessible location
+   - Position the power switch in an easily accessible location
    - Ensure motors are properly installed on the chassis
 
-3. **Connect the power circuit**:
-   - Connect the powerbank's USB output to the ESP32-S2 Mini's USB-C port
-   - Connect the powerbank's 5V output to one terminal of the toggle switch
-   - Connect the other terminal of the switch to the step-up converter input
+4. **Connect the power circuit**:
+   - Connect the powerbank's USB output to the power switch
+   - Connect the power switch output to the USB splitter
+   - Connect one output from the splitter to the ESP32-S2 Mini's USB-C port
+   - Extract 5V/GND from the second output and connect to the step-up converter input
    - Connect the step-up converter's 6V output to VM on the DRV8833
    - Connect all ground lines together (powerbank, ESP32-S2 Mini, step-up converter, DRV8833)
 
-4. **Connect the control circuit**:
+5. **Connect the control circuit**:
    - Connect GPIO7 on ESP32-S2 Mini to AIN1 on DRV8833
    - Connect GPIO8 on ESP32-S2 Mini to AIN2 on DRV8833
    - Connect GPIO9 on ESP32-S2 Mini to BIN1 on DRV8833
    - Connect GPIO10 on ESP32-S2 Mini to BIN2 on DRV8833
 
-5. **Connect the motors**:
+6. **Connect the motors**:
    - Connect left motor to AOUT1 and AOUT2 on DRV8833
    - Connect right motor to BOUT1 and BOUT2 on DRV8833
 
-6. **Test the circuit**:
-   - Power on the circuit using the toggle switch
+7. **Test the circuit**:
+   - Power on the circuit using the global power switch
    - Verify that the ESP32-S2 Mini powers up correctly
    - Check voltage levels at the DRV8833 VM pin (should be approximately 6V)
 
 ## Advantages of This Setup
 
-1. **Improved control**: 
-   - Toggle switch allows quick motor power control
-   - ESP32-S2 Mini can remain powered for programming while motors are disabled
+1. **True global control**: 
+   - One switch powers the entire system on or off
+   - No need to disconnect the powerbank when not in use
+   - Prevents battery drain during storage
 
 2. **Simplified power management**:
-   - Direct USB power to the ESP32-S2 Mini
-   - Clean, regulated power for the microcontroller
-   - Separate power path for motors
+   - Single power source (powerbank)
+   - Clean power distribution to all components
+   - Separate power paths for ESP32-S2 Mini and motors after the split
 
 3. **Enhanced development experience**:
-   - Native USB support makes programming easier
-   - Can debug/program while connected to computer
-   - No external programmer required
+   - Native USB support when connected to computer
+   - When programming/debugging, can disconnect the powerbank and use computer USB
+   - Single switch operation for field testing
 
 4. **Compact design**:
    - ESP32-S2 Mini has a smaller footprint than ESP32-CAM
@@ -234,17 +274,23 @@ The DRV8833 uses a more streamlined approach to motor control compared to tradit
 
 ## Troubleshooting
 
+### System Not Powering Up
+- Check if the global power switch is in the ON position
+- Verify all USB connections are secure
+- Check the powerbank has sufficient charge
+- Test the power switch continuity with a multimeter
+
+### ESP32-S2 Mini Not Powering Up
+- Check all USB connections in the power path
+- Try a different USB cable
+- Make sure the USB splitter is functioning correctly
+- Verify the powerbank has sufficient charge
+
 ### Motors Not Responding
-- Check if the toggle switch is in the ON position
 - Verify power connections (VM and GND on DRV8833)
 - Ensure the step-up converter is outputting approximately 6V
 - Confirm motor connections to AOUT and BOUT pins
 - Verify control pin connections between ESP32-S2 Mini and DRV8833
-
-### ESP32-S2 Mini Not Powering Up
-- Check USB connection to powerbank
-- Try a different USB cable
-- Verify the powerbank has sufficient charge
 
 ### Motors Running In Wrong Direction
 - Swap the motor terminal connections (AOUT1/AOUT2 or BOUT1/BOUT2)
@@ -253,7 +299,7 @@ The DRV8833 uses a more streamlined approach to motor control compared to tradit
 ### Inconsistent Motor Behavior
 - Check all ground connections are properly connected together
 - Verify the step-up converter is providing stable voltage
-- Ensure toggle switch makes good contact and doesn't create intermittent connections
+- Ensure the USB splitter can provide sufficient current
 
 ### Electrical Noise Issues
 - Keep signal wires away from motor wires where possible
@@ -263,4 +309,4 @@ The DRV8833 uses a more streamlined approach to motor control compared to tradit
 ### Power Management Issues
 - If powerbank auto-shuts off, look for a model with "always on" capability
 - For longer run times, consider a powerbank with higher capacity (10,000mAh+)
-- If the system resets when motors start, ensure powerbank can provide sufficient current 
+- If the system resets when motors start, ensure USB splitter and powerbank can provide sufficient current 

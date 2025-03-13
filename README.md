@@ -27,9 +27,10 @@ Each version contains its own complete implementation for its respective hardwar
 - **v2**: 
   - Wemos ESP32-S2 Mini development board
   - DRV8833 dual H-bridge motor driver ([detailed documentation](v2/WIRING.md))
-  - 5V powerbank with USB output (powers ESP32-S2 Mini directly)
+  - 5V powerbank with USB output
+  - USB splitter/hub or adapter
+  - USB in-line power switch (for global power control)
   - Step-up converter (boosts 5V from powerbank to 6V for motors)
-  - SPST toggle switch (for global power control)
 
 ### Power Supply Architecture Differences
 
@@ -40,10 +41,11 @@ The v1 and v2 versions use different power supply approaches:
 - Battery/power source → L298N motor driver (higher voltage)
 
 **v2 Power Supply:**
-- Powerbank USB output → ESP32-S2 Mini USB-C port (direct connection)
-- Powerbank 5V output → Toggle switch → Step-up converter → DRV8833 motor driver (6V)
+- Powerbank USB output → Global power switch → USB splitter/hub
+  - First output: USB-C connection to ESP32-S2 Mini (direct connection)
+  - Second output: 5V to Step-up converter → DRV8833 motor driver (6V)
 
-The v2 setup includes a master power switch that allows you to disable the motors while keeping the microcontroller powered for programming and debugging.
+The v2 setup uses a true global power switch that controls the entire system with a single switch, turning both the microcontroller and motors on/off together.
 
 ## Hardware Comparison
 
@@ -66,6 +68,14 @@ The v2 setup includes a master power switch that allows you to disable the motor
 | Size | Large | Compact |
 | Control Method | Enable + Direction pins | PWM on all pins |
 
+### Power Control Comparison
+| Feature | v1 Approach | v2 Approach |
+|---------|------------|-------------|
+| Power Switch | Controls motors only | True global control (entire system) |
+| Power Source | Separate paths | Single source with distribution |
+| Wiring Complexity | More complex | Simplified with USB connectivity |
+| Development Mode | ESP32 always on | System fully controlled by one switch |
+
 For detailed pin connections, wiring diagrams, and implementation specifics, see:
 - [L298N Wiring & Implementation Guide](v1/WIRING.md)
 - [DRV8833 Wiring & Implementation Guide](v2/WIRING.md)
@@ -81,7 +91,7 @@ This project uses PlatformIO for development and deployment:
 5. Build and upload the project using PlatformIO
 
 ### V2 Programming Advantage
-The v2 version with ESP32-S2 Mini can be programmed directly via USB-C connection without additional hardware, making development and testing significantly easier.
+The v2 version with ESP32-S2 Mini can be programmed directly via USB-C connection without additional hardware, making development and testing significantly easier. During development, you can disconnect the powerbank and connect the ESP32-S2 Mini directly to your computer.
 
 ## Features
 
