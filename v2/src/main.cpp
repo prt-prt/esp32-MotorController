@@ -1,14 +1,12 @@
 #include <Arduino.h>
 #include "motor_control.h"
 #include "movement_modes.h"
+#include "test_mode.h"
+#include "wander_mode.h"
+#include "rotate_mode.h"
 
 // Current movement mode
 MovementMode currentMode = WANDER_MODE;
-
-// Function prototypes
-void runTestMode();
-void runWanderMode();
-void runRotateMode();
 
 void setup() {
   Serial.begin(115200);

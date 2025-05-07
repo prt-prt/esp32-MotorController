@@ -2,12 +2,12 @@
 
 // DRV8833 Motor Driver Pins for ESP32-CAM
 // Motor A - Left Motor
-const int AIN1 = 2;  // PWM control for Motor A direction 1
-const int AIN2 = 12; // PWM control for Motor A direction 2
+const int AIN1 = 39;  // PWM control for Motor A direction 1
+const int AIN2 = 37; // PWM control for Motor A direction 2
 
 // Motor B - Right Motor
-const int BIN1 = 15; // PWM control for Motor B direction 1
-const int BIN2 = 14; // PWM control for Motor B direction 2
+const int BIN1 = 35; // PWM control for Motor B direction 1
+const int BIN2 = 33; // PWM control for Motor B direction 2
 
 // Motor speed constants
 const int MAX_SPEED = 255;
