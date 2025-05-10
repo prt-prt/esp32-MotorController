@@ -1,6 +1,49 @@
-# ESP32 Robot Car Controller
+# ESP32 Motor Controller
 
-This project implements control software for a 2-wheel drive robot car using ESP32 microcontrollers with PWM speed control for the motors, enabling various movement modes.
+A collection of motor control implementations for the ESP32-S2 Mini with DRV8833 motor driver.
+
+## Version Overview
+
+### v1: Basic Test
+- Simple motor test sequence
+- Basic forward/backward/turn movements
+- No fault detection
+
+### v2: Mode System
+- Multiple movement modes (wander, rotate, test)
+- Mode switching logic
+- Basic error handling
+
+### v3: Power Management
+- Improved power handling
+- Speed ramping
+- Basic fault detection
+- Reduced motor speeds
+
+### v4: Organic Movement
+- Slow, rock-like movement patterns
+- Advanced fault detection
+- PWM-based motor control
+- Random movement generation
+- Detailed debugging
+
+### v5: Simple Forward Test
+- Continuous forward movement
+- Basic PWM control
+- Minimal code for testing
+- No mode switching or complex logic
+
+## Hardware
+- ESP32-S2 Mini (Lolin)
+- DRV8833 Motor Driver
+- 2 DC Motors
+- Power Supply (5V recommended)
+
+## Pin Configuration
+- Motor A: GPIO11 (IN1), GPIO9 (IN2)
+- Motor B: GPIO7 (IN1), GPIO5 (IN2)
+- Fault Pin: GPIO12
+- LED: GPIO15
 
 ## Project Structure
 
