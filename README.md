@@ -33,6 +33,12 @@ A collection of motor control implementations for the ESP32-S2 Mini with DRV8833
 - Minimal code for testing
 - No mode switching or complex logic
 
+### v6: All Directions Test
+- Tests all motor directions sequentially
+- Basic PWM control
+- Auxiliary pin control (GPIO39)
+- Cycle between directions automatically
+
 ## Hardware
 - ESP32-S2 Mini (Lolin)
 - DRV8833 Motor Driver
