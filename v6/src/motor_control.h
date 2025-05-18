@@ -13,9 +13,6 @@
 // LED pin
 #define LED_PIN 15    // Onboard LED
 
-// Motor speed (0-255)
-#define MOTOR_SPEED 255  // 100% duty cycle
-
 // Motor direction states
 enum MotorDirection {
   FORWARD,
