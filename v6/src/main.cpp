@@ -31,6 +31,8 @@ void setup() {
   // Blink LED 6 times to indicate version 6
   blinkLED(6);
   
+  delay(8000);
+
   // Initialize motors
   setupMotors();
   
@@ -41,7 +43,6 @@ void setup() {
   // Start with motors stopped
   setDirection(STOP);
   
-  delay(2000);
 }
 
 void loop() {
